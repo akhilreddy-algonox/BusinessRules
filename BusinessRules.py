@@ -2,17 +2,17 @@ import Lib
 import _StaticFunctions
 import _BooleanReturnFunctions
 import _AssignFunction
-
-
+from datetime import datetime
+import pandas as pd
 
 # comment below two for local testing
-from ace_logger import Logging
-logging = Logging()
+#from ace_logger import Logging
+#logging = Logging()
 
 # uncomment these below lines for local testing
-# import logging 
-# logger=logging.getLogger() 
-# logger.setLevel(logging.DEBUG) 
+import logging 
+logger=logging.getLogger() 
+logger.setLevel(logging.DEBUG) 
 
 
 
@@ -144,7 +144,219 @@ class BusinessRules():
             return self.evaluate_rule(param_value)
         if param_source == 'input':
             param_value = param_object['value']
-            # param_value = str(param_value).strip() # converting into strings..need to check
+            param_value = str(param_value).strip() # converting into strings..need to check
             return  param_value
- 
 
+##############################################################################################################
+
+read_rule = {'rule_type':'static',
+              'function':'Read',
+              'parameters':{'path':'D:\\AlgonoX\\Python\\BUSINESS RULES\\KARVY_BusinessRules\\sample.csv'}
+}
+
+DR_CR_D_check = {'rule_type': 'static',
+        'function': 'CompareKeyValue',
+        'parameters': {'left_param':{'source': 'rule', 'value':read_rule},
+                       'operator':'==',
+                       'right_param':{'source':'input', 'value':'D'}
+                      }
+       }
+
+Amount_Debit = {'rule_type': 'static',
+                'function': 'Transform',
+                'parameters':[
+            {'param':{'source':'rule', 'value':read_rule}},
+            {'operator':'*'},
+            {'param':{'source':'input', 'value':"-1"}}
+        ]
+}
+
+
+Amount_Assign_rule = {'rule_type': 'static',
+                        'function': 'Assign',
+                        'parameters': {'assign_table':{'table':'karvy_feed_copy', 'column':'Amount'}, 
+                                                'assign_value':{'source':'rule', 'value':Amount_Debit}
+                      }
+}
+
+updating_Amount = {'rule_type': 'condition',
+                    'evaluations': [{ 'conditions':[DR_CR_D_check],'executions':[Amount_Assign_rule]
+
+        }]
+}
+
+
+########################################### Assign_Rules ###############################################################################
+
+Feed_Assign_rule = {'rule_type': 'static',
+                        'function': 'Assign',
+                        'parameters': {'assign_table':{'table':'karvy_feed_copy', 'column':'Feed'}, 
+                                                'assign_value':{'source':'input', 'value':'CMS'}
+                      }
+}
+
+Sub_Feed_Assign_rule = {'rule_type': 'static',
+                        'function': 'Assign',
+                        'parameters': {'assign_table':{'table':'karvy_feed_copy', 'column':'Sub_Feed'}, 
+                                                'assign_value':{'source':'input', 'value':'CMS'}
+                      }
+}
+
+ID_Assign_rule = {'rule_type': 'static',
+                        'function': 'Assign',
+                        'parameters': {'assign_table':{'table':'karvy_feed_copy', 'column':'ID'}, 
+                                                'assign_value':{'source':'input', 'value':'0'}
+                      }
+}
+
+Feed_ID_Assign_rule = {'rule_type': 'static',
+                        'function': 'Assign',
+                        'parameters': {'assign_table':{'table':'karvy_feed_copy', 'column':'Feed_ID'}, 
+                                                'assign_value':{'source':'input', 'value':''}
+                      }
+}
+
+########################################### Filtering_rule ###################################################################
+
+Code_check = {'rule_type': 'static',
+        'function': 'CompareKeyValue',
+        'parameters': {'left_param':{'source': 'input_config', 'table': 'karvy_feed_copy', 'column': 'Code'},
+                       'operator':'==',
+                       'right_param':{'source':'input', 'value':''}
+                      }
+       }
+
+Queue_Assign_rule = {'rule_type': 'static',
+                        'function': 'Assign',
+                        'parameters': {'assign_table':{'table':'Process_queue', 'column':'queue'}, 
+                                                'assign_value':{'source':'input', 'value':'Maker'}
+                      }
+}    
+
+updating_Queue_Code = {'rule_type': 'condition',
+                    'evaluations': [{ 'conditions':[Code_check],'executions':[Queue_Assign_rule]
+
+        }]
+}
+
+########################################### Filtering_Date ###################################################################
+Filtering_Date = { 'rule_type': 'static',
+    'function'  : 'InCheckDate',
+    'parameters':{'start_date':{'source':'input', 'value':'2009-01-01'},
+                'end_date':{'source':'input', 'value':'2029-01-01'},
+                'date':{'source':'input_config','table': 'karvy_feed_copy', 'column': 'Date'}
+                }
+}
+
+###################################################################################################################################
+
+
+db_tables = {
+                    "karvy_extraction" : ["karvy_feed_copy"],
+                    #"queues":["process_queue"]
+                }
+unique_id = 'Cms_10'
+
+###################################################################################################################################
+###################################### Based on Dataframe #########################################################################
+"""data = {
+    'NAME':['Rachel','Ross','joy','Monica','Phoebe'],
+    'ROLL':[497,498,499,500,501],
+    'AGE':[23,24,25,26,27]
+}
+
+data = pd.DataFrame(data)"""
+
+####################################################################################################################################
+count_df_rule = {'rule_type':'static',
+                  'function':'Contains',
+                  'parameters':{'table_name':'data','column_name':'NAME','value':{'source':'input','value':'Rachel'}}
+}
+
+assign_df_rule = {'rule_type':'static',
+                  'function':'Assign',
+                  'parameters':{'assign_table':{'table':'data', 'column':'ROLL'}, 
+                                'assign_value':{'source':'input', 'value':'roll is'}
+}
+}
+#####################################################################################################################################
+############################################# Karvy_BusinessRules #########################################################
+#####################################################################################################################################
+
+read_rule = {'rule_type':'static',
+              'function':'Read',
+              'parameters':{'path':'D:\\AlgonoX\\Python\\BUSINESS RULES\\KARVY_BusinessRules\\sample.csv'}
+}
+
+#####################################################################################################################################
+filtering_rule = {'rule_type': 'static',
+                  'function': 'Filter',
+                  'parameters': {
+                  'from_table': {'source':'input','value':'ocr'},
+                 'lookup_filters':[
+                {
+                    'column_name': 'Amount',
+                    'compare_with':  {'source':'input', 'value':1000},
+                    'operator':'&'
+                },
+                {
+                    'column_name': 'Plan Code',
+                    'compare_with':  {'source':'input', 'value':'AG'},
+                    'operator':'|'
+                }
+            ]
+        }
+
+}
+########################################## 05-10-2019 #######################################################################
+
+ocr = pd.read_csv('D:\\AlgonoX\\Python\\BUSINESS RULES\\KARVY_BusinessRules\\sample.csv')
+
+Amount_Debit = {'rule_type': 'static',
+                'function': 'TransformDF',
+                'parameters':{
+                                'table':'ocr',
+                                'ocr_copy':'ocr_copy',
+                                'value1_colomn':'Amount',
+                                'operator':'*',
+                                'value2':-1
+                            }
+}
+
+# ignore filter_test rule
+filter_test = {'rule_type': 'static',
+    'function': 'Filter',
+    'parameters': {
+            'from_table': 'ocr',
+            'lookup_filters':[
+                {
+                    'column_name': 'Amount',
+                    'lookup_operator' : '==',
+                    'compare_with':  {'source':'input', 'value': 10}
+                }
+            ]
+        }
+}
+
+where_test = {'rule_type': 'static',
+    'function': 'WhereClause',
+    'parameters': {
+            'data_frame':{'source':'rule', 'value': Amount_Debit},
+            'from_table': 'ocr',
+            'colomn':'Amount',
+            'lookup_filters':[
+                {
+                    'column_name': 'Plan Code',
+                    'lookup_operator' : '==',
+                    'compare_with':  {'source':'input', 'value': 'GP'}
+                }
+                
+            ]
+
+        }
+}
+
+#####################################################################################################################################
+a = BusinessRules('1234',[where_test],{'ocr':ocr,'ocr_copy':ocr.copy()},decision = True)
+print(a.evaluate_business_rules())
+print(a.data_source['ocr'])

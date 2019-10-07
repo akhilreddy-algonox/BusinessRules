@@ -1,13 +1,13 @@
 import Lib
 
 # comment below two for local testing
-from ace_logger import Logging
-logging = Logging()
+# from ace_logger import Logging
+# logging = Logging()
 
 # uncomment these below lines for local testing
-# import logging 
-# logger=logging.getLogger() 
-# logger.setLevel(logging.DEBUG) 
+import logging 
+logger=logging.getLogger() 
+logger.setLevel(logging.DEBUG) 
 
 
 
