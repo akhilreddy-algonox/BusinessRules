@@ -499,7 +499,7 @@ def doWhereClause(self,parameters):
     data_frame = self.get_param_value(parameters['data_frame'])
     column = parameters['column']
     try:
-        return data_frame.where(~t_value,self.data_source[from_table][column])
+        return data_frame.where(t_value,self.data_source[from_table][column])
     except Exception as e:
         logging.error(e)
         logging.error("\n error in where doWhereClause")
