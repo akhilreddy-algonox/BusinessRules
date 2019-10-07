@@ -385,27 +385,37 @@ def doTransformDF(self,parameters) :
             {'operator':'-'},
             {'param':{'source':'input', 'value':1}},
             {'operator':'*'},
-            {'param':{'source':'input', 'value':3}}
+            {'param':{'source':'input', 'value':3}},
+            {'operator':'broadcast'},
+            {'param':{'source':'input', 'value':Value}}
         ]
     Note:
         1) Recursive evaluations of rules can be made.
     """
     logging.info(f"parameters got are {parameters}")
-    value1_colomn = parameters['value1_colomn']
-    value2 = parameters['value2']
+    value1_colomn = self.get_param_value(parameters['value1_colomn'])
+    value2 = self.get_param_value(parameters['value2'])
     operator_ = parameters['operator']
     table = parameters['table']
-    ocr_copy = parameters['ocr_copy']
-    # ocr_copy is a copied data of ocr
-    if operator_ == "*":
-        self.data_source[ocr_copy][value1_colomn] = (self.data_source[table][value1_colomn] * int(value2))
-    if operator_ == "+":
-        self.data_source[ocr_copy][value1_colomn] = (self.data_source[table][value1_colomn] + int(value2))
-    if operator_ == "-":
-        self.data_source[ocr_copy][value1_colomn] = (self.data_source[table][value1_colomn] - int(value2))
-    if operator_ == "/":
-        self.data_source[ocr_copy][value1_colomn] = (self.data_source[table][value1_colomn] / int(value2))
-    return self.data_source[ocr_copy]
+    
+    try:
+        if operator_ == "*":
+            return (self.data_source[table][value1_colomn] * float(value2))
+        if operator_ == "+":
+            return (self.data_source[table][value1_colomn] + float(value2))
+        if operator_ == "-":
+            return (self.data_source[table][value1_colomn] - float(value2))
+        if operator_ == "/":
+            return (self.data_source[table][value1_colomn] / float(value2))
+        if operator_ == "broadcast":
+            return pd.Series([value2]*len(self.data_source[table]))
+        
+    except Exception as e:
+        logging.error("\n error in transform function \n")
+        logging.error(e)
+    
+    
+    
 
 @register_method
 def doFilter(self, parameters):
@@ -469,7 +479,7 @@ def doWhereClause(self,parameters):
         'parameters': {
             'data_frame':{'source':'rule', 'value': Amount_Debit},
             'from_table': 'ocr',
-            'colomn':'Amount',
+            'column':'Amount',
             'lookup_filters':[
                 {
                     'column_name': 'Plan Code',
@@ -487,9 +497,11 @@ def doWhereClause(self,parameters):
     lookup_filters = parameters['lookup_filters']
     t_value = GetTruthValues(self,from_table,lookup_filters)
     data_frame = self.get_param_value(parameters['data_frame'])
-    colomn = parameters['colomn']
+    column = parameters['column']
     try:
-        self.data_source[from_table][colomn] = data_frame[colomn].where(t_value,self.data_source[from_table][colomn])
-    except:
-        print("Error")
-    return True
+        return data_frame.where(~t_value,self.data_source[from_table][column])
+    except Exception as e:
+        logging.error(e)
+        logging.error("\n error in where doWhereClause")
+    return
+    
