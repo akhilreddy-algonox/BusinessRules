@@ -1,11 +1,13 @@
 # comment below two for local testing
-from ace_logger import Logging
-logging = Logging()
+# from ace_logger import Logging
+# logging = Logging()
+import pandas as pd
+import ntpath
 
 # uncomment these below lines for local testing
-# import logging 
-# logger=logging.getLogger() 
-# logger.setLevel(logging.DEBUG) 
+import logging 
+logger=logging.getLogger() 
+logger.setLevel(logging.DEBUG) 
 
 
 
@@ -22,6 +24,14 @@ db_config = {
     'password': os.environ['LOCAL_DB_PASSWORD'],
     'port': os.environ['LOCAL_DB_PORT']
 }
+
+
+# give any path...platform independent...get the base name
+def path_leaf(path):
+    """give any path...platform independent...get the base name"""
+    head, tail = ntpath.split(path)
+    return tail or ntpath.basename(head)
+
 
 def to_DT_data(parameters):
     """Amith's processing for parameters"""
@@ -105,9 +115,36 @@ def update_tables(case_id, tenant_id, updates):
         
     return "UPDATED IN THE DATABASE SUCCESSFULLY"
 
+
+def writeToCsv(df, file_path, required_standard_mapping=None):
+    """Write the dataframe to csv"""
+    if not required_standard_mapping:
+        required_standard_mapping = {ele:ele for ele in list(df.columns)}
+    required_columns = required_standard_mapping.values()
+    try:
+
+        # first find whether any csv exists with the file_name
+        existing_df = pd.read_csv(file_path)
+        mode = 'a'
+        headers = False
+        df.to_csv(file_path, columns=required_columns, mode=mode, header=headers, index=False)
+    except:
+        # no sample file exists
+        headers = True
+        mode = 'w'
+        
+        # rename the columns in the dataframe to standardized columns            
+        df = df.rename(columns=required_standard_mapping)
+        df.to_csv(file_path, columns=required_columns, mode=mode, header=headers, index=False)
+                
+    return "Written to csv successfully"
+
+
+
+
 # as of now run this...you can combine the run_chained_rules and column_chained rules with small changes
-def run_chained_rules_column(case_id, tenant_id, chain_rules, start_rule_id=None, updated_tables=False, trace_exec=None, rule_params=None):
-    """Execute the chained rules"""
+def run_chained_rules_column(file_path, chain_rules, start_rule_id=None):
+    """Execute the chained rules column wise"""
     
     # get the mapping of the rules...basically a rule_id maps to a rule
     rule_id_mapping = {}
@@ -120,34 +157,11 @@ def run_chained_rules_column(case_id, tenant_id, chain_rules, start_rule_id=None
     if start_rule_id is None:
         if rule_id_mapping.keys():
             start_rule_id = list(rule_id_mapping.keys())[0]
-            trace_exec = []
-            rule_params = {}
-            
-    # if start_rule_id then. coming from other service 
-    # get the existing trace and rule params data
-    business_rules_db = DB('business_rules', tenant_id=tenant_id, **db_config)
-    rule_data_query = "SELECT * from `rule_data` where `case_id`=%s"
-    params = [case_id]
-    df = business_rules_db.execute(rule_data_query, params=params)
-    try:
-        trace_exec = json.loads(list(df['trace_data'])[0])
-        logging.info(f"\nexistig trace exec is \n{trace_exec}\n")
-    except Exception as e:
-        logging.info(f"no existing trace data")
-        logging.info(f"{str(e)}")
-        trace_exec = []
     
-    try:
-        rule_params = json.loads(list(df['rule_params'])[0])
-        logging.info(f"\nexistig rule_params is \n{rule_params}\n")
-    except Exception as e:
-        logging.info(f"no existing rule params data")
-        logging.info(f"{str(e)}")
-        rule_params = {}
-      
-    # usually master data will not get updated...for every rule
-    master_data_tables = get_data_sources(tenant_id, case_id, 'master', master=True)
- 
+    BR  = BusinessRules(None, [], {})
+    file_name = path_leaf(file_path)[:-4] # stripping the .csv
+    BR.data_source['master'] = pd.read_csv(file_path)
+    
     logging.info(f"\nStart rule id got is {start_rule_id}\n ")
     while start_rule_id != "END":
         # get the rules, next rule id to be evaluated
@@ -157,64 +171,16 @@ def run_chained_rules_column(case_id, tenant_id, chain_rules, start_rule_id=None
                       \nnext_if_sucess {next_if_sucess}\n \
                       \nnext_if_failure {next_if_failure}\n ")
         
-        # update the data_table if there is any change
-        case_id_data_tables = get_data_sources(tenant_id, case_id, 'case_id_based')
-        master_updated_tables = {} 
-        if updated_tables:
-            master_updated_tables = get_data_sources(tenant_id, case_id, 'updated_tables')
-        # consolidate the data into data_tables
-        data_tables = {**case_id_data_tables, **master_data_tables, **master_updated_tables} 
-        
         # evaluate the rule
-        rules = [json.loads(rule_to_evaluate)] 
-        BR  = BusinessRules(case_id, rules, data_tables)
-        decision = BR.evaluate_rule(rules[0])
-        
-        logging.info(f"\n got the decision {decision} for the rule id {start_rule_id}")
-        logging.info(f"\n updates got are {BR.changed_fields}")
-        
-        updates = {}
-        # update the updates if any
-        if BR.changed_fields:
-            updates = BR.changed_fields
-            update_tables(case_id, tenant_id, updates)
-
-        
-        # update the trace_data
-        trace_exec.append(start_rule_id)
-
-        logging.info(f"\n params data used from the rules are \n {BR.params_data}\n")
-        # update the rule_params
-        trace_dict = {
-                        str(start_rule_id):{
-                            'description' : description if description else 'No description available in the database',
-                            'output' : "",
-                            'input' : to_DT_data(BR.params_data['input'])
-                            }
-                        }
-        rule_params.update(trace_dict)
-        # update the start_rule_id based on the decision
-        if decision:
-            start_rule_id = next_if_sucess
-        else:
-            start_rule_id = next_if_failure
+        BR.rules = [json.loads(rule_to_evaluate)] 
+        BR.evaluate_business_rules() # apply the business rules
+        start_rule_id = next_if_sucess # no matter what go with next if success
         logging.info(f"\n next rule id to execute is {start_rule_id}\n")
         
-    
-    # off by one updates...
-    trace_exec.append(start_rule_id)
-    
-    # store the trace_exec and rule_params in the database
-    update_rule_params_query = f"INSERT INTO `rule_data`(`id`, `case_id`, `rule_params`) VALUES ('NULL',%s,%s) ON DUPLICATE KEY UPDATE `rule_params`=%s"
-    params = [case_id, json.dumps(rule_params), json.dumps(rule_params)]
-    business_rules_db.execute(update_rule_params_query, params=params)
-    
-    update_trace_exec_query = f"INSERT INTO `rule_data` (`id`, `case_id`, `trace_data`) VALUES ('NULL',%s,%s) ON DUPLICATE KEY UPDATE `trace_data`=%s"
-    params = [case_id, json.dumps(trace_exec), json.dumps(trace_exec)]
-    business_rules_db.execute(update_trace_exec_query, params=params)
-    
     logging.info("\n Applied chained rules successfully")
-    return 'Applied chained rules successfully'
+    # finally write to the csv
+    writeToCsv(BR.data_source['master'], file_path[:-4]+"_processed.csv")
+    return BR
 
 
 
@@ -256,10 +222,7 @@ def run_chained_rules(case_id, tenant_id, chain_rules, start_rule_id=None, updat
         logging.info(f"no existing rule params data")
         logging.info(f"{str(e)}")
         rule_params = {}
-      
-    # usually master data will not get updated...for every rule
-    master_data_tables = get_data_sources(tenant_id, case_id, 'master', master=True)
- 
+       
     logging.info(f"\nStart rule id got is {start_rule_id}\n ")
     while start_rule_id != "END":
         # get the rules, next rule id to be evaluated
@@ -336,7 +299,7 @@ def run_group_rules(case_id, rules, data):
     logging.info(f"\n updates from the group rules are \n{updates}\n")
     return updates
 
-def apply_business_rule(case_id, function_params, tenant_id):
+def apply_business_rule(case_id, function_params, tenant_id, file_path):
     """Run the business rules based on the stage in function params and tenant_id
     Args:
         case_id: Unique id that we pass
@@ -366,6 +329,12 @@ def apply_business_rule(case_id, function_params, tenant_id):
         for ind, rule in rules.iterrows():
             rule_id_mapping[rule['rule_id']] = [rule['rule_string'], rule['next_if_sucess'], rule['next_if_failure'], rule['stage'], rule['description'], rule['data_source']]
 
+        # if columwise processing then run those
+        if column:
+            output = run_chained_rules_column(file_path, rules)
+            return {'flag': True, 'message': 'Applied business rules columnwise successfully.'}
+
+            
         # making it generic takes to take a type parameter from the database..
         # As of now make it (all others  or chained) only
         is_chain_rule = '' not in rule_id_mapping
@@ -382,9 +351,7 @@ def apply_business_rule(case_id, function_params, tenant_id):
         
         updates = {}
         # apply business rules
-        if column:
-            run_chained_rules_column(case_id, tenant_id, rules)
-        elif is_chain_rule:
+        if is_chain_rule:
             run_chained_rules(case_id, tenant_id, rules)
         else:
             updates = run_group_rules(case_id, list(rules['rule_string']), data_tables)

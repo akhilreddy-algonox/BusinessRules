@@ -10,7 +10,6 @@ import logging
 logger=logging.getLogger() 
 logger.setLevel(logging.DEBUG) 
 
-
 __methods__ = [] # self is a BusinessRules Object
 register_method = Lib.register_method(__methods__)
 
@@ -42,6 +41,12 @@ def evaluate_static(self, function, parameters):
         return self.doTransformDF(parameters)
     if function == 'WhereClause':
         return self.doWhereClause(parameters)
+    if function == 'WriteToCSV':
+        return self.doWriteToCSV(parameters)
+    if function == 'GetTruthValues':
+        return self.GetTruthValues(parameters)
+    if function == 'Split':
+        return self.doSplit(parameters)
 
 @register_method
 def doGetLength(self, parameters):
@@ -82,7 +87,7 @@ def doGetRange(self, parameters):
     start_index = range_['start_index']
     end_index = range_['end_index']
     try:
-        return (str(value)[start_index: end_index])
+        return (value.str[start_index: end_index])
     except Exception as e:
         logging.error(f"some error in the range function")
         logging.error(e)
@@ -338,8 +343,10 @@ def doFilter1(self, parameters):
 
 
 ######################################### 05-10-2019 #######################################
-
-def GetTruthValues(self,from_table,lookup_filters):
+@register_method
+def GetTruthValues(self,parameters):
+    lookup_filters = parameters['lookup_filters']
+    from_table = parameters['from_table']
     t_value = pd.Series([True]*len(self.data_source[from_table]))
     for lookup in lookup_filters:
         lookup_column = lookup['column_name']
@@ -413,9 +420,6 @@ def doTransformDF(self,parameters) :
     except Exception as e:
         logging.error("\n error in transform function \n")
         logging.error(e)
-    
-    
-    
 
 @register_method
 def doFilter(self, parameters):
@@ -488,20 +492,48 @@ def doWhereClause(self,parameters):
                 }
                 
             ]
-
         }
     }"""
 
     logging.info(f"parameters got are {parameters}")
     from_table = parameters['from_table']
-    lookup_filters = parameters['lookup_filters']
-    t_value = GetTruthValues(self,from_table,lookup_filters)
+    t_value = self.get_param_value(parameters['t_value'])
     data_frame = self.get_param_value(parameters['data_frame'])
-    column = parameters['column']
+    column = parameters['colomn']
     try:
         return data_frame.where(t_value,self.data_source[from_table][column])
     except Exception as e:
         logging.error(e)
         logging.error("\n error in where doWhereClause")
     return
-    
+
+@register_method
+def doSplit(self,parameters):
+    df1 = self.get_param_value(parameters['table'])
+    df1['Scheme Code'] = df1['Scheme Code'].str.split('-').str[0]
+    print(df1)
+
+@register_method
+def doWriteToCSV(df, file_path, required_standard_mapping):
+   """Write the dataframe to csv"""
+   try:
+
+       # first find whether any csv exists with the file_name
+       existing_df = pd.read_csv(file_path)
+
+       mode = 'a'
+       headers = False
+       df.to_csv(file_path, columns=required_columns, mode=mode, header=headers, index=False)
+   except:
+       # no sample file exists
+       headers = True
+       mode = 'w'
+       
+       # rename the columns in the dataframe to standardized columns            
+       df = df.rename(columns=required_standard_mapping)
+       
+       required_columns = required_standard_mapping.values()
+
+       df.to_csv(file_path, columns=required_columns, mode=mode, header=headers, index=False)
+               
+   return "Written to csv successfully"

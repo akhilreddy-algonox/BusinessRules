@@ -66,6 +66,7 @@ def consume(broker_url='broker:9092'):
 
             try:
                 case_id = data.get('case_id', None)
+                file_path = data.get('file_path', None)
                 functions = data['functions']
                 tenant_id = data['tenant_id']
             except Exception as e:
@@ -115,7 +116,7 @@ def consume(broker_url='broker:9092'):
             # Call the function
             try:
                 logging.debug(f'Calling function `run_business_rule`')
-                result = apply_business_rule(case_id, function_params, tenant_id)
+                result = apply_business_rule(case_id, function_params, tenant_id, file_path)
             except:
                 # Unlock the case.
                 logging.exception(f'Something went wrong while saving changes. Check trace.')

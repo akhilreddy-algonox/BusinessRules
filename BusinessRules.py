@@ -310,7 +310,7 @@ filtering_rule = {'rule_type': 'static',
 }
 ########################################## 05-10-2019 #######################################################################
 
-ocr = pd.read_csv('D:\\AlgonoX\\Python\\BUSINESS RULES\\KARVY_BusinessRules\\sample.csv')
+# ocr = pd.read_csv('D:\\AlgonoX\\Python\\BUSINESS RULES\\KARVY_BusinessRules\\sample.csv')
 
 Amount_Debit = {'rule_type': 'static',
                 'function': 'TransformDF',
@@ -357,6 +357,6 @@ where_test = {'rule_type': 'static',
 }
 
 #####################################################################################################################################
-a = BusinessRules('1234',[where_test],{'ocr':ocr,'ocr_copy':ocr.copy()},decision = True)
-print(a.evaluate_business_rules())
-print(a.data_source['ocr'])
+# a = BusinessRules('1234',[where_test],{'ocr':ocr,'ocr_copy':ocr.copy()},decision = True)
+# print(a.evaluate_business_rules())
+# print(a.data_source['ocr'])
