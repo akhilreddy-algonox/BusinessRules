@@ -42,6 +42,14 @@ def evaluate_static(self, function, parameters):
         return self.doTransformDF(parameters)
     if function == 'WhereClause':
         return self.doWhereClause(parameters)
+    if function == 'Split':
+        return self.doSplit(parameters)
+    if function == 'GetTruthValues':
+        return self.doGetTruthValues(parameters)
+    if function == 'IsAlpha':
+        return self.doIsAlpha(parameters)
+    if function == 'IsAlnum':
+        return self.doIsAlnum(parameters)
 
 @register_method
 def doGetLength(self, parameters):
@@ -95,7 +103,7 @@ def doSelect(self, parameters):
         parameters (dict): The table from which we have to select and the where conditions. 
     eg:
         'parameters': {
-            'from_table': 'ocr',
+            'from_table': 'master',
             'select_column': 'highlight',
             'lookup_filters':[
                 {
@@ -185,7 +193,7 @@ def doContains(self,parameters):
     eg:
             cpt_check_rule = {'rule_type': 'static',
                 'function': 'Contains',
-                'parameters': { 'table_name': 'ocr','column_name': 'cpt_codes',
+                'parameters': { 'table_name': 'master','column_name': 'cpt_codes',
                                 'value':{'source':'input', 'value':92610}
                         }
             }
@@ -210,7 +218,7 @@ def doCount(self, parameters):
         parameters (dict): The table from which we have to select and the where conditions. 
     eg:
         'parameters': {
-            'from_table': 'ocr',
+            'from_table': 'master',
             'lookup_filters':[
                 {
                     'column_name': 'Vendor GSTIN',
@@ -284,7 +292,7 @@ def doFilter1(self, parameters):
         parameters (dict): The table from which we have to select and the where conditions. 
     eg:
         'parameters': {
-            'from_table': 'ocr',
+            'from_table': 'master',
             'select_column': 'highlight',
             'lookup_filters':[
                 {
@@ -322,8 +330,8 @@ def doFilter1(self, parameters):
         lookup_column = lookup['column_name']
         compare_value = self.get_param_value(lookup['compare_with'])
         operator_value = lookup['operator']
-        ocr2 = self.data_source['ocr']
-        query += f"({ocr2}['{lookup_column}'] == {compare_value}) {operator_value}"
+        master2 = self.data_source['master']
+        query += f"({master2}['{lookup_column}'] == {compare_value}) {operator_value}"
     query = query.strip(f" {operator_value} ") # the final strip for the extra &
     print(query)
     self.data_source[from_table] = self.data_source[from_table][query]
@@ -338,9 +346,68 @@ def doFilter1(self, parameters):
 
 
 ######################################### 05-10-2019 #######################################
-
-def GetTruthValues(self,from_table,lookup_filters):
+@register_method
+def doIsAlpha(self,parameters):
+    """ Returns series of boolean values for given data
+    Args:
+        parameters (dict): The table from which we have to select and the column name. 
+    eg:
+        'parameters':{
+            'from_table': 'master',
+            'column_name':'',
+            }
+    """
+    logging.info(f"parameters got are {parameters}")
+    from_table = parameters['from_table']
+    column_name = parameters['column_name']
     t_value = pd.Series([True]*len(self.data_source[from_table]))
+    t_value = (t_value & (self.data_source[from_table][column_name]).str.isalpha())
+    
+    return t_value
+
+@register_method
+def doIsAlnum(self,parameters):
+    """ Returns series of boolean values for given data
+    Args:
+        parameters (dict): The table from which we have to select and the column name. 
+    eg:
+        'parameters':{
+            'from_table': 'master',
+            'column_name':'',
+            }
+    """
+    logging.info(f"parameters got are {parameters}")
+    from_table = parameters['from_table']
+    column_name = parameters['column_name']
+    t_value = pd.Series([True]*len(self.data_source[from_table]))
+    t_value = (t_value & (self.data_source[from_table][column_name]).str.isalnum())
+    
+    return t_value
+
+
+@register_method
+def doGetTruthValues(self,parameters):
+    """ Returns series of boolean values for given data
+    Args:
+        parameters (dict): The table from which we have to select and the where conditions. 
+    eg:
+        'parameters':{
+            'from_table': 'master',
+                'lookup_filters':[
+                    {
+                        'column_name': 'Plan Code',
+                        'lookup_operator' : '==',
+                        'compare_with':  {'source':'input', 'value': 'GP'}
+                    }
+                    
+                ]
+        }
+    """
+    logging.info(f"parameters got are {parameters}")
+    from_table = parameters['from_table']
+    lookup_filters = parameters['lookup_filters']
+    t_value = pd.Series([True]*len(self.data_source[from_table]))
+
     for lookup in lookup_filters:
         lookup_column = lookup['column_name']
         lookup_operator = lookup['lookup_operator']
@@ -369,7 +436,7 @@ def GetTruthValues(self,from_table,lookup_filters):
         # our own ==
         if lookup_operator == '<=':
             t_value = (t_value & ((self.data_source[from_table])[lookup_column] != compare_value))
-    
+
     return t_value
 
 @register_method
@@ -393,20 +460,20 @@ def doTransformDF(self,parameters) :
         1) Recursive evaluations of rules can be made.
     """
     logging.info(f"parameters got are {parameters}")
-    value1_colomn = self.get_param_value(parameters['value1_colomn'])
+    value1_column = self.get_param_value(parameters['value1_column'])
     value2 = self.get_param_value(parameters['value2'])
     operator_ = parameters['operator']
     table = parameters['table']
     
     try:
         if operator_ == "*":
-            return (self.data_source[table][value1_colomn] * float(value2))
+            return (self.data_source[table][value1_column] * float(value2))
         if operator_ == "+":
-            return (self.data_source[table][value1_colomn] + float(value2))
+            return (self.data_source[table][value1_column] + float(value2))
         if operator_ == "-":
-            return (self.data_source[table][value1_colomn] - float(value2))
+            return (self.data_source[table][value1_column] - float(value2))
         if operator_ == "/":
-            return (self.data_source[table][value1_colomn] / float(value2))
+            return (self.data_source[table][value1_column] / float(value2))
         if operator_ == "broadcast":
             return pd.Series([value2]*len(self.data_source[table]))
         
@@ -414,9 +481,6 @@ def doTransformDF(self,parameters) :
         logging.error("\n error in transform function \n")
         logging.error(e)
     
-    
-    
-
 @register_method
 def doFilter(self, parameters):
     """Returns the vlookup value from the tables.
@@ -424,7 +488,7 @@ def doFilter(self, parameters):
         parameters (dict): The table from which we have to select and the where conditions. 
     eg:
         'parameters': {
-            'from_table': 'ocr',
+            'from_table': 'master',
             'lookup_filters':[
                 {
                     'column_name': 'Vendor GSTIN',
@@ -447,8 +511,6 @@ def doFilter(self, parameters):
     lookup_filters = parameters['lookup_filters']
     t_value = pd.Series([True]*len(self.data_source[from_table]))
     print(t_value)
-    # build the query
-    query = ""
     for lookup in lookup_filters:
         lookup_column = lookup['column_name']
         lookup_operator = lookup['lookup_operator']
@@ -457,9 +519,9 @@ def doFilter(self, parameters):
         # our own ==
         if lookup_operator == '==':
             t_value = (t_value & ((self.data_source[from_table])[lookup_column] == compare_value))
-        # our own ==
+        # our own !=
         if lookup_operator == '!=':
-            print(self.data_source['ocr']['Amount'] == 1000)
+            print(self.data_source['master']['Amount'] == 1000)
             t_value = (t_value & ((self.data_source[from_table])[lookup_column] != compare_value))
 
     try:
@@ -474,28 +536,19 @@ def doFilter(self, parameters):
 def doWhereClause(self,parameters):
     """Returns the vlookup value from the tables.
     Args:
-        parameters (dict): The table from which we have to select and the where conditions. 
+        parameters (dict): The table from which we have to select and the boolean series. 
     eg:
         'parameters': {
             'data_frame':{'source':'rule', 'value': Amount_Debit},
-            'from_table': 'ocr',
+            'from_table': 'master',
             'column':'Amount',
-            'lookup_filters':[
-                {
-                    'column_name': 'Plan Code',
-                    'lookup_operator' : '==',
-                    'compare_with':  {'source':'input', 'value': 'GP'}
-                }
-                
-            ]
-
+            't_value': {'source':'rule', 'value': Amount_Debit}
         }
     }"""
 
     logging.info(f"parameters got are {parameters}")
     from_table = parameters['from_table']
-    lookup_filters = parameters['lookup_filters']
-    t_value = GetTruthValues(self,from_table,lookup_filters)
+    t_value = self.get_param_value(parameters['t_value'])
     data_frame = self.get_param_value(parameters['data_frame'])
     column = parameters['column']
     try:
@@ -504,4 +557,20 @@ def doWhereClause(self,parameters):
         logging.error(e)
         logging.error("\n error in where doWhereClause")
     return
+
+@register_method
+def doSplit(self,parameters):
+    """
+    eg:
+        'parameters': {
+            'value_tosplit':{'source':'rule', 'value': Amount_Debit},
+            'symbol': '-',
+            'index': 0
+            }
+    """
+    logging.info(f"parameters got are {parameters}")
+    data = self.get_param_value(parameters['value_tosplit'])
+    symbol = parameters['symbol']
+    index = parameters['index']
     
+    return(data.str.split(symbol).str[index])
