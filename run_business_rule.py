@@ -65,7 +65,7 @@ def consume(broker_url='broker:9092'):
             logging.info(f'Message: {data}')
 
             try:
-                case_id = data['case_id']
+                case_id = data.get('case_id', None)
                 functions = data['functions']
                 tenant_id = data['tenant_id']
             except Exception as e:
