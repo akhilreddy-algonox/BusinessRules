@@ -275,6 +275,7 @@ def doRead(self,parameters):
     logging.info(f"\n got the parameters {parameters}\n")
     try:
         df = pd.read_csv(self.get_param_value(parameters['path']))
+        df = df.replace(np.nan, '', regex=True)
         table_name = self.get_param_value(parameters['table_name'])
     except Exception as e:
         logging.error("\nError in reading the file\n")
@@ -421,21 +422,21 @@ def doGetTruthValues(self,parameters):
         if lookup_operator == '!=':
             t_value = (t_value & ((self.data_source[from_table])[lookup_column] != compare_value))
         
-        # our own ==
+        # our own >
         if lookup_operator == '>':
-            t_value = (t_value & ((self.data_source[from_table])[lookup_column] != compare_value))
+            t_value = (t_value & ((self.data_source[from_table])[lookup_column] > compare_value))
         
-        # our own ==
+        # our own <
         if lookup_operator == '<':
-            t_value = (t_value & ((self.data_source[from_table])[lookup_column] != compare_value))
+            t_value = (t_value & ((self.data_source[from_table])[lookup_column] < compare_value))
             
-        # our own ==
+        # our own >=
         if lookup_operator == '>=':
-            t_value = (t_value & ((self.data_source[from_table])[lookup_column] != compare_value))
+            t_value = (t_value & ((self.data_source[from_table])[lookup_column] >= compare_value))
             
-        # our own ==
+        # our own <=
         if lookup_operator == '<=':
-            t_value = (t_value & ((self.data_source[from_table])[lookup_column] != compare_value))
+            t_value <= (t_value & ((self.data_source[from_table])[lookup_column] <= compare_value))
 
     return t_value
 
