@@ -380,7 +380,7 @@ def doIsAlnum(self,parameters):
     from_table = parameters['from_table']
     column_name = parameters['column_name']
     t_value = pd.Series([True]*len(self.data_source[from_table]))
-    t_value = (t_value & (self.data_source[from_table][column_name]).str.isalnum())
+    t_value = (t_value & ((self.data_source[from_table][column_name]).str.isalpha()) & ((self.data_source[from_table][column_name]).str.isalnum()) )    
     
     return t_value
 
@@ -550,7 +550,7 @@ def doWhereClause(self,parameters):
     from_table = parameters['from_table']
     t_value = self.get_param_value(parameters['t_value'])
     data_frame = self.get_param_value(parameters['data_frame'])
-    column = parameters['colomn']
+    column = parameters['column']
     try:
         return data_frame.where(t_value,self.data_source[from_table][column])
     except Exception as e:
