@@ -3,6 +3,7 @@
 # logging = Logging()
 import pandas as pd
 import ntpath
+import numpy as np
 
 # uncomment these below lines for local testing
 import logging 
@@ -161,6 +162,7 @@ def run_chained_rules_column(file_path, chain_rules, start_rule_id=None):
     BR  = BusinessRules(None, [], {})
     file_name = path_leaf(file_path)[:-4] # stripping the .csv
     BR.data_source['master'] = pd.read_csv(file_path)
+    BR.data_source['master'] = BR.data_source['master'].replace(np.nan, '', regex=True)
     
     logging.info(f"\nStart rule id got is {start_rule_id}\n ")
     while start_rule_id != "END":
