@@ -126,6 +126,7 @@ def writeToCsv(df, file_path, required_standard_mapping=None):
 
         # first find whether any csv exists with the file_name
         existing_df = pd.read_csv(file_path)
+        df = df.rename(columns=required_standard_mapping)
         mode = 'a'
         headers = False
         df.to_csv(file_path, columns=required_columns, mode=mode, header=headers, index=False)
