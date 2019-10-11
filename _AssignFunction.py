@@ -4,14 +4,17 @@ import Lib
 __methods__ = [] # self is a BusinessRules Object
 register_method = Lib.register_method(__methods__)
 
-# comment below two for local testing
-# from ace_logger import Logging
-# logging = Logging()
+try:
+    # comment below two for local testing
+    from ace_logger import Logging
+    logging = Logging()    
+except Exception as e:
+    # uncomment these below lines for local testing
+    import logging 
+    logger=logging.getLogger() 
+    logger.setLevel(logging.DEBUG) 
 
-# uncomment these below lines for local testing
-import logging 
-logger=logging.getLogger() 
-logger.setLevel(logging.DEBUG) 
+
 
 
 @register_method

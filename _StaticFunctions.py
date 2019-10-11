@@ -1,15 +1,17 @@
 import Lib
 import pandas as pd
 import sys
-# comment below two for local testing
-#from ace_logger import Logging
-#logging = Logging()
 
-# uncomment these below lines for local testing
-import logging 
-logger=logging.getLogger() 
-logger.setLevel(logging.DEBUG) 
-
+try:
+    # comment below two for local testing
+    from ace_logger import Logging
+    logging = Logging()    
+except Exception as e:
+    # uncomment these below lines for local testing
+    import logging 
+    logger=logging.getLogger() 
+    logger.setLevel(logging.DEBUG) 
+    
 __methods__ = [] # self is a BusinessRules Object
 register_method = Lib.register_method(__methods__)
 

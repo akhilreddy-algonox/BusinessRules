@@ -147,6 +147,11 @@ def consume(broker_url='broker:9092'):
 
                     if next_topic is not None:
                         logging.debug('Not the last topic of the group.')
+                        logging.debug(f'Sending the append data if any ')
+                        logging.info(f"data to be passed is {result['produce_data']}")
+                        produce_data = result.get('produce_data', None)
+                        if produce_data:
+                            data.update(produce_data)
                         produce(next_topic, data)
 
                     # Update the progress count by 1
