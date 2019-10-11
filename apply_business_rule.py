@@ -121,12 +121,12 @@ def update_tables(case_id, tenant_id, updates):
     return "UPDATED IN THE DATABASE SUCCESSFULLY"
 
 
-def writeToCsv(df, file_path, required_standard_mapping=None):
+def writeToCsv(df, file_path_raw_, file_path, required_standard_mapping=None):
     """Write the dataframe to csv"""
     if not required_standard_mapping:
         required_standard_mapping = {ele:ele for ele in list(df.columns)}
     # write the processed_raw_files
-    df.to_csv(file_path, index=False)
+    df.to_csv(file_path_raw_, index=False)
     required_columns = required_standard_mapping.values()
     try:
 
@@ -187,10 +187,12 @@ def run_chained_rules_column(file_path, chain_rules, start_rule_id=None):
         
     logging.info("\n Applied chained rules successfully")
     # generate the final file name
-    file_path_ = file_path[:-4]+"_processed_"+ str(time.mktime(datetime.datetime.today().timetuple()))
+    file_path_raw_ = file_path[:-4]+"raw_processed_"+ str(time.mktime(datetime.datetime.today().timetuple()))
+    file_path_standard = file_path[:-4]+"standard_processed_"+ str(time.mktime(datetime.datetime.today().timetuple()))
     # finally write to the csv
-    writeToCsv(BR.data_source['master'], file_path_)
-    return BR, file_path_
+    map_ = {'TRANS_DATE':'Date', 'CLIENT_CODE':'Code', 'ENTRY_AMT':'Amount', 'REJECTED':'REJECTED', 'Matched':'Matched'}
+    writeToCsv(BR.data_source['master'], file_path_raw_,file_path_standard, map_ )
+    return BR, file_path_raw_, file_path_standard
 
 
 
@@ -341,8 +343,8 @@ def apply_business_rule(case_id, function_params, tenant_id, file_path):
 
         # if columwise processing then run those
         if column:
-            output, file_name = run_chained_rules_column(file_path, rules)
-            kafka_data = {'processed_file_path':file_name, 'stage':stage}
+            output, file_name_raw,file_name_standard  = run_chained_rules_column(file_path, rules)
+            kafka_data = {'standard_processed_file_path':file_name_standard, 'raw_processed_file_path':file_name_raw, 'stage':stage}
             return {'flag': True, 'message': 'Applied business rules columnwise successfully.', 'produce_data':kafka_data}
 
             
