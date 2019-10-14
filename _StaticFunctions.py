@@ -51,6 +51,8 @@ def evaluate_static(self, function, parameters):
         return self.doIsAlpha(parameters)
     if function == 'IsAlnum':
         return self.doIsAlnum(parameters)
+    if function == 'DateTransform' :
+        return self.doDateTransform(parameters)
 
 @register_method
 def doGetLength(self, parameters):
@@ -576,3 +578,25 @@ def doSplit(self,parameters):
     index = parameters['index']
     
     return(data.str.split(symbol).str[index])
+
+@register_method
+def doDateTransform(self,parameters):
+    """Returns dates of single formate.
+    Args:
+        parameters (dict): The table and column names which contain dates.
+    eg:
+        'parameters': {
+                    'from_table':'master',
+                    'from_column':'Nav Date'
+                }
+
+    """
+    logging.info(f"parameters got are {parameters}")
+    from_table = parameters['from_table']
+    from_column = parameters['from_column']
+    #date_to_convert = self.get_param_value(parameters['date_to_convert'])
+    try:
+        self.data_source[from_table][from_column] =  pd.to_datetime(self.data_source[from_table][from_column],dayfirst=True,errors='coerce').dt.date
+    except Exception as e:
+        logging.ERROR("DATE CONVERSION FAILED")
+        logging.ERROR(e)
